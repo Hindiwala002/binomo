@@ -26,7 +26,7 @@ def get_driver() -> webdriver:
 
     options.add_argument(f"user-data-dir={os.getcwd()}/chrome profile")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    # self.options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    options.add_experimental_option('excludeSwitches', ['enable-logging'])
     options.add_experimental_option('useAutomationExtension', False)
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--disable-extensions")
