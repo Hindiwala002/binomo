@@ -14,6 +14,14 @@ pip install selenium
 
 ## Usage:
 ### Warning: Use At Your Own Risk
+### Download [ChromeDriver](https://chromedriver.chromium.org/downloads)
+Put It Along With trader.py  
+Tree:
+```shell
+│   chromedriver.exe
+│   main.py
+```
+**RUN:**
 ```shell
 python3 trader.py
 ```
