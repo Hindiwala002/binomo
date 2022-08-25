@@ -49,7 +49,7 @@ def enter_amount(web_driver: webdriver, amount: str):
     amount_element.send_keys(Keys.CONTROL + 'A', Keys.BACKSPACE)
     for character in amount:
         amount_element.send_keys(character)
-        time.sleep(random.choice([0.2, 0.3, 0.5]))
+        time.sleep(random.choice([0.1, 0.2, 0.3]))
 
 
 def check_win(web_driver: webdriver, trade_amount: int, log_file: str) -> bool:
@@ -118,12 +118,14 @@ def main(log_file, username: str, password: str, base_amount: float, martingale:
                 .send_keys(password)
 
             driver.find_element(by='xpath', value='//*[@id="qa_auth_LoginBtn"]/button').click()
+            time.sleep(3)
+            driver.refresh()
 
             msg = 'Logged In'
             logger(msg, log_file)
             print(msg)
 
-    except NoSuchElementException:  # Means we're already logged in 
+    except NoSuchElementException:  # Means we're already logged in
         try:  # Let Load
             WebDriverWait(driver, 40).until(
                 expected_conditions.presence_of_element_located((By.XPATH, '//*[@id="qa_trading_balance"]')))
