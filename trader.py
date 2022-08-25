@@ -30,10 +30,11 @@ def get_driver() -> webdriver:
     options = Options()
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
                          "Chrome/104.0.0.0 Safari/537.36")
-    options.add_argument("--headless")
+    # options.add_argument("--headless")
     options.add_argument(f"user-data-dir={os.getcwd()}/chrome profile")
     options.add_experimental_option("excludeSwitches", ['enable-automation', 'enable-logging'])
     # options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    options.add_argument("--start-maximized")
     options.add_experimental_option('useAutomationExtension', False)
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--disable-extensions")
@@ -76,14 +77,14 @@ def check_win(web_driver: webdriver, trade_amount: int, log_file: str) -> bool:
 
 def main(log_file, username: str, password: str, base_amount: float, martingale: float, martingale_stop: int,
          win_sleep: float, stop_balance: float):
-    msg = 'Bot Started'
-    logger(msg, log_file)
-    print(msg)
-
     try:
         os.mkdir('logs')
     except FileExistsError:
         pass
+
+    msg = 'Bot Started'
+    logger(msg, log_file)
+    print(msg)
 
     win_msg = ''
 
@@ -96,15 +97,7 @@ def main(log_file, username: str, password: str, base_amount: float, martingale:
     driver = get_driver()
     driver.get("https://binomo.com/trading")
 
-    try:  # Let Load
-        WebDriverWait(driver, 40).until(
-            expected_conditions.presence_of_element_located((By.XPATH, '//*[@id="qa_trading_balance"]')))
-    except TimeoutException:
-        msg = 'Timed Out - Exiting'
-        logger(msg, log_file)
-        print(msg)
-        driver.close()
-        exit()
+    time.sleep(10)
 
     try:  # This block checks if we're asked to log in.
         login_text = driver.find_element(
@@ -130,8 +123,16 @@ def main(log_file, username: str, password: str, base_amount: float, martingale:
             logger(msg, log_file)
             print(msg)
 
-    except NoSuchElementException:
-        pass
+    except NoSuchElementException:  # Means we're already logged in 
+        try:  # Let Load
+            WebDriverWait(driver, 40).until(
+                expected_conditions.presence_of_element_located((By.XPATH, '//*[@id="qa_trading_balance"]')))
+        except TimeoutException:
+            msg = 'Timed Out - Exiting'
+            logger(msg, log_file)
+            print(msg)
+            driver.close()
+            exit()
 
     try:  # Let Load
         WebDriverWait(driver, 40).until(
