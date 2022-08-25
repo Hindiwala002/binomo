@@ -6,27 +6,34 @@ import os
 import re  # I definitely wrote these regexes
 import time
 import random
+from datetime import datetime
 from selenium import webdriver
 from selenium.common.exceptions import *
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions
+
+# Cpu usage is insanely high on headless.
+# TODO: Find a fix to high CPU usage
+
+
+def logger(msg, log_file):
+    time_now = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+    with open(f'logs/{log_file}', 'a') as logs:
+        logs.writelines(f'[{time_now}] {msg}' + '\n')
 
 
 def get_driver() -> webdriver:
     options = Options()
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
                          "Chrome/104.0.0.0 Safari/537.36")
-    options.add_argument("--start-maximized")
-
-    # TODO: Add Headless Mode and Fix check_win in headless mode
-    # Headless does work on typing and making trades but check_win failed on my test.
-    # options.add_argument("--headless")
-
+    options.add_argument("--headless")
     options.add_argument(f"user-data-dir={os.getcwd()}/chrome profile")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    options.add_experimental_option("excludeSwitches", ['enable-automation', 'enable-logging'])
+    # options.add_experimental_option('excludeSwitches', ['enable-logging'])
     options.add_experimental_option('useAutomationExtension', False)
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--disable-extensions")
@@ -44,12 +51,17 @@ def enter_amount(web_driver: webdriver, amount: str):
         time.sleep(random.choice([0.2, 0.3, 0.5]))
 
 
-def check_win(web_driver: webdriver, trade_amount: int) -> bool:
+def check_win(web_driver: webdriver, trade_amount: int, log_file: str) -> bool:
     while True:  # Keep looking for the Popup
         try:
             return_amount = web_driver.find_element(
                 By.XPATH, '//*[@id="trade"]/div/div/app-toasts/app-option-toast/div/span[3]').text
             return_amount = float(re.findall(r'([-+]*\d+\.\d+|[-+]*\d+)', return_amount)[0])
+
+            msg = f'Returned: {return_amount}'
+            logger(msg, log_file)
+            print(msg)
+
             if return_amount > trade_amount:
                 web_driver.find_element(  # Close the popup
                     By.XPATH, '//*[@id="trade"]/div/div/app-toasts/app-option-toast/div/button').click()
@@ -62,14 +74,18 @@ def check_win(web_driver: webdriver, trade_amount: int) -> bool:
             pass
 
 
-def main():
-    # Configuration
-    base_amount = float(input('Base Amount: '))
-    martingale = float(input('Martingale Multiplier: '))
-    martingale_stop = int(input('Martingale Stop: '))  # Reset the martingale counter and start from base amount again
-    win_sleep = float(input('Win Sleep: '))  # Will pause for n number of seconds after each win
-    # Bot will Pause itself after account balance reaches or goes over the specified amount
-    stop_balance = float(input('Stop Balance: '))
+def main(log_file, username: str, password: str, base_amount: float, martingale: float, martingale_stop: int,
+         win_sleep: float, stop_balance: float):
+    msg = 'Bot Started'
+    logger(msg, log_file)
+    print(msg)
+
+    try:
+        os.mkdir('logs')
+    except FileExistsError:
+        pass
+
+    win_msg = ''
 
     amount_index = 0
     amounts = []
@@ -80,27 +96,67 @@ def main():
     driver = get_driver()
     driver.get("https://binomo.com/trading")
 
-    time.sleep(5)
-    input('\aPress Enter To Start Trading: ')
+    try:  # Let Load
+        WebDriverWait(driver, 40).until(
+            expected_conditions.presence_of_element_located((By.XPATH, '//*[@id="qa_trading_balance"]')))
+    except TimeoutException:
+        msg = 'Timed Out - Exiting'
+        logger(msg, log_file)
+        print(msg)
+        driver.close()
+        exit()
+
+    try:  # This block checks if we're asked to log in.
+        login_text = driver.find_element(
+            by='xpath', value='/html/body/binomo-root/lib-platform-scroll/div/div/div/ng-component/app-auth/div/div/p')
+        if login_text.text == 'Login':
+            msg = 'Session Expired: Attempting Login'
+            logger(msg, log_file)
+            print(msg)
+
+            driver.find_element(
+                by='xpath',
+                value='//*[@id="qa_auth_LoginEmailInput"]/vui-input/div[1]/div[1]/vui-input-text/input') \
+                .send_keys(username)
+
+            driver.find_element(
+                by='xpath',
+                value='//*[@id="qa_auth_LoginPasswordInput"]/vui-input/div[1]/div[1]/vui-input-password/input') \
+                .send_keys(password)
+
+            driver.find_element(by='xpath', value='//*[@id="qa_auth_LoginBtn"]/button').click()
+
+            msg = 'Logged In'
+            logger(msg, log_file)
+            print(msg)
+
+    except NoSuchElementException:
+        pass
+
+    try:  # Let Load
+        WebDriverWait(driver, 40).until(
+            expected_conditions.presence_of_element_located((By.XPATH, '//*[@id="qa_trading_balance"]')))
+    except TimeoutException:
+        msg = 'Timed Out - Exiting'
+        logger(msg, log_file)
+        print(msg)
+        driver.close()
+        exit()
+
+    msg = 'Started Trading'
+    logger(msg, log_file)
+    print(msg)
+
     while True:
         try:
             balance = driver.find_element(By.ID, 'qa_trading_balance').text.replace(',', '')
             balance = float(re.findall(r'([-+]*\d+\.\d+|[-+]*\d+)', balance)[0])
             if balance >= stop_balance:
-                print('Balance Reached: ', balance)
-                input('Press Enter To Run Again\nOr CTRL+C To Quit: ')
-                base_amount = float(input('Base Amount: '))
-                martingale = float(input('Martingale Multiplier: '))
-                martingale_stop = int(input('Martingale Stop: '))
-                win_sleep = float(input('Win Sleep: '))
-                stop_balance = float(input('Stop Balance: '))
-
-                amount_index = 0
-                amounts = []
-                for i in range(martingale_stop):
-                    amounts.append(str(int(base_amount)))
-                    base_amount *= martingale
-
+                msg = f'Balance Reached: {balance}'
+                logger(msg, log_file)
+                print(msg)
+                driver.close()
+                exit()
             try:
                 current_amount = amounts[amount_index]
             except IndexError:
@@ -136,15 +192,18 @@ def main():
             time.sleep(1)  # Wait for the Balance to Update after a trade is made
             balance = driver.find_element(By.ID, 'qa_trading_balance').text.replace(',', '')
             balance = float(re.findall(r'([-+]*\d+\.\d+|[-+]*\d+)', balance)[0])
-            print(f'New Trade: {current_trade} > {current_amount}\nBalance: {balance}')
 
-            is_win = check_win(driver, int(current_amount))
+            msg = f'{win_msg}New Trade: {current_trade} > {current_amount}\nBalance: {balance}'
+            logger(msg, log_file)
+            print(msg)
+
+            is_win = check_win(driver, int(current_amount), log_file)
             if is_win:
-                print('Win - ', end='')
+                win_msg = 'Win - '
                 amount_index = 0
                 time.sleep(win_sleep)
             else:
-                print('Loss - ', end='')
+                win_msg = 'Loss - '
                 amount_index += 1
         except ElementClickInterceptedException:  # Close Popups
             driver.find_element(By.XPATH, '/html/body/ng-component/vui-modal/div/div[1]/button').click()
@@ -152,4 +211,27 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    file = datetime.now().strftime("%d-%m-%Y %H-%M-%S") + '.txt'
+
+    # Configuration
+    user_name = str
+    user_password = str
+    base_trade_amount = float
+    martingale_multiplier = float
+    # Reset the martingale counter and start from base amount again
+    max_martingale = int
+    # Bot will sleep for specified number of seconds after every win
+    win_wait = float
+    # Bot will Pause itself after account balance reaches or goes over the specified amount
+    exit_bal = float
+ 
+    # user_name = input('Username: ')
+    # user_password = input('Password: ')
+    # base_trade_amount = float(input('Base Amount: '))
+    # martingale_multiplier = float(input('Martingale Multiplier: '))
+    # max_martingale = int(input('Martingale Stop: '))
+    # win_wait = float(input('Win Sleep: '))  # Will pause for n number of seconds after each win
+    # # Bot will Pause itself after account balance reaches or goes over the specified amount
+    # exit_bal = float(input('Stop Balance: '))
+
+    main(file, user_name, user_password, base_trade_amount, martingale_multiplier, max_martingale, win_wait, exit_bal)
