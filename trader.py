@@ -56,26 +56,31 @@ def check_win(web_driver: webdriver, trade_amount: int, log_file: str) -> bool:
     while True:  # Keep looking for the Popup
         try:
             return_amount = web_driver.find_element(
-                By.XPATH, '//*[@id="trade"]/div/div/app-toasts/app-option-toast/div/span[3]').text
+                By.XPATH, '//*[@id="trade"]/div/div/app-toasts/app-option-toast/div/span[3]').text.replace(',', '')
             return_amount = float(re.findall(r'([-+]*\d+\.\d+|[-+]*\d+)', return_amount)[0])
 
             msg = f'Returned: {return_amount}'
             logger(msg, log_file)
             print(msg)
 
-            if return_amount > trade_amount:
-                web_driver.find_element(  # Close the popup
+            try:
+                web_driver.find_element(  # Close popup
                     By.XPATH, '//*[@id="trade"]/div/div/app-toasts/app-option-toast/div/button').click()
+            except ElementClickInterceptedException:
+                web_driver.find_element(By.XPATH, '/html/body/ng-component/vui-modal/div/div[1]/button').click()
+                time.sleep(1)
+                web_driver.find_element(  # Close popup
+                    By.XPATH, '//*[@id="trade"]/div/div/app-toasts/app-option-toast/div/button').click()
+
+            if return_amount > trade_amount:
                 return True
             elif return_amount <= trade_amount:
-                web_driver.find_element(  # Close the popup
-                    By.XPATH, '//*[@id="trade"]/div/div/app-toasts/app-option-toast/div/button').click()
                 return False
         except NoSuchElementException:
             pass
 
 
-def main(log_file, username: str, password: str, base_amount: float, martingale: float, martingale_stop: int,
+def main(log_file, username: str, password: str, base_amount: int, martingale: float, martingale_stop: int,
          win_sleep: float, stop_balance: float):
     try:
         os.mkdir('logs')
@@ -166,7 +171,7 @@ def main(log_file, username: str, password: str, base_amount: float, martingale:
                 amount_index = 0
                 current_amount = amounts[amount_index]
 
-            time.sleep(1)  # Sometimes the bot captures the Opinion too fast.
+            time.sleep(2)  # Sometimes the bot captures the Opinion too fast.
             call_opinion = driver.find_element(
                 By.XPATH, '//*[@id="trade-menu"]/majority-opinion/div/div/div[2]/span[1]').text.replace('%', '').strip()
             call_button = driver.find_element(By.XPATH, '//*[@id="qa_trading_dealUpButton"]/button')
