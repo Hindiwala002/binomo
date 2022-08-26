@@ -23,7 +23,9 @@ from selenium.webdriver.support import expected_conditions
 def logger(msg, log_file):
     time_now = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
     with open(f'logs/{log_file}', 'a') as logs:
-        logs.writelines(f'[{time_now}] {msg}' + '\n')
+        msg = f'[{time_now}] {msg}' + '\n'
+        logs.writelines(msg)
+        print(msg.strip())
 
 
 def get_driver() -> webdriver:
@@ -61,7 +63,6 @@ def check_win(web_driver: webdriver, trade_amount: int, log_file: str) -> bool:
 
             msg = f'Returned: {return_amount}'
             logger(msg, log_file)
-            print(msg)
 
             try:
                 web_driver.find_element(  # Close popup
@@ -89,9 +90,6 @@ def main(log_file, username: str, password: str, base_amount: int, martingale: f
 
     msg = 'Bot Started'
     logger(msg, log_file)
-    print(msg)
-
-    win_msg = ''
 
     amount_index = 0
     amounts = []
@@ -110,13 +108,11 @@ def main(log_file, username: str, password: str, base_amount: int, martingale: f
         if login_text.text == 'Login':
             msg = 'Session Expired: Attempting Login'
             logger(msg, log_file)
-            print(msg)
 
             driver.find_element(
                 by='xpath',
                 value='//*[@id="qa_auth_LoginEmailInput"]/vui-input/div[1]/div[1]/vui-input-text/input') \
                 .send_keys(username)
-
             driver.find_element(
                 by='xpath',
                 value='//*[@id="qa_auth_LoginPasswordInput"]/vui-input/div[1]/div[1]/vui-input-password/input') \
@@ -128,7 +124,6 @@ def main(log_file, username: str, password: str, base_amount: int, martingale: f
 
             msg = 'Logged In'
             logger(msg, log_file)
-            print(msg)
 
     except NoSuchElementException:  # Means we're already logged in
         try:  # Let Load
@@ -137,7 +132,6 @@ def main(log_file, username: str, password: str, base_amount: int, martingale: f
         except TimeoutException:
             msg = 'Timed Out - Exiting'
             logger(msg, log_file)
-            print(msg)
             driver.close()
             exit()
 
@@ -147,13 +141,11 @@ def main(log_file, username: str, password: str, base_amount: int, martingale: f
     except TimeoutException:
         msg = 'Timed Out - Exiting'
         logger(msg, log_file)
-        print(msg)
         driver.close()
         exit()
 
     msg = 'Started Trading'
     logger(msg, log_file)
-    print(msg)
 
     while True:
         try:
@@ -162,7 +154,6 @@ def main(log_file, username: str, password: str, base_amount: int, martingale: f
             if balance >= stop_balance:
                 msg = f'Balance Reached: {balance}'
                 logger(msg, log_file)
-                print(msg)
                 driver.close()
                 exit()
             try:
@@ -197,21 +188,21 @@ def main(log_file, username: str, password: str, base_amount: int, martingale: f
                     put_button.click()
                     current_trade = 'Put'
 
+            msg = f'New Trade: {current_trade} > {current_amount}'
+            logger(msg, log_file)
+
+            is_win = check_win(driver, int(current_amount), log_file)
             time.sleep(1)  # Wait for the Balance to Update after a trade is made
             balance = driver.find_element(By.ID, 'qa_trading_balance').text.replace(',', '')
             balance = float(re.findall(r'([-+]*\d+\.\d+|[-+]*\d+)', balance)[0])
-
-            msg = f'{win_msg}New Trade: {current_trade} > {current_amount}\nBalance: {balance}'
-            logger(msg, log_file)
-            print(msg)
-
-            is_win = check_win(driver, int(current_amount), log_file)
             if is_win:
-                win_msg = 'Win - '
+                msg = f'Win - Balance: {balance}'
+                logger(msg, log_file)
                 amount_index = 0
                 time.sleep(win_sleep)
             else:
-                win_msg = 'Loss - '
+                msg = f'Loss - Balance: {balance}'
+                logger(msg, log_file)
                 amount_index += 1
         except ElementClickInterceptedException:  # Close Popups
             driver.find_element(By.XPATH, '/html/body/ng-component/vui-modal/div/div[1]/button').click()
