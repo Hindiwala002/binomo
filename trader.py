@@ -25,10 +25,6 @@ def logger(msg, log_file):
     with open(f'logs/{log_file}', 'a') as logs:
         msg = f'[{time_now}] {msg}'
         logs.writelines(f'{msg}\n')
-        if 'Loss' in msg:
-            msg = f'\033[0;91m{msg}\033[00m'
-        elif 'Win' in msg:
-            msg = f'\033[0;92m{msg}\033[00m'
         print(msg)
 
 
