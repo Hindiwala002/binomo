@@ -23,9 +23,13 @@ from selenium.webdriver.support import expected_conditions
 def logger(msg, log_file):
     time_now = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
     with open(f'logs/{log_file}', 'a') as logs:
-        msg = f'[{time_now}] {msg}' + '\n'
-        logs.writelines(msg)
-        print(msg.strip())
+        msg = f'[{time_now}] {msg}'
+        logs.writelines(f'{msg}\n')
+        if 'Loss' in msg:
+            msg = f'\033[0;91m{msg}\033[00m'
+        elif 'Win' in msg:
+            msg = f'\033[0;92m{msg}\033[00m'
+        print(msg)
 
 
 def get_driver() -> webdriver:
@@ -55,7 +59,9 @@ def enter_amount(web_driver: webdriver, amount: str):
 
 
 def check_win(web_driver: webdriver, trade_amount: int, log_file: str) -> bool:
+    time.sleep(30)  # Wait before checking for win
     while True:  # Keep looking for the Popup
+        time.sleep(1)
         try:
             return_amount = web_driver.find_element(
                 By.XPATH, '//*[@id="trade"]/div/div/app-toasts/app-option-toast/div/span[3]').text.replace(',', '')
