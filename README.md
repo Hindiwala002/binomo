@@ -30,14 +30,3 @@ python3 trader.py
 
 ## How it works:
 **Makes Trade Based On Majority Market Opinion. If Market Opinion Is Neutral(50%), Make The Trade On Random Direction.**
-
-**Base Amount:**  
-Starting Amount  
-**Martingale:**  
-Martingale Multiplier  
-**Martingale Stop:**  
-Stop Multiplying After Specified Number  
-**Win Sleep:**  
-Pause For n Number Of Seconds After Win  
-**Stop Balance:**  
-Pause After Account Balance Reaches Or Goes Over Specified Balance.  
