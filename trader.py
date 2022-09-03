@@ -16,6 +16,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 
+
 # Cpu usage is insanely high on headless.
 # TODO: Find a fix to high CPU usage
 
@@ -25,6 +26,10 @@ def logger(msg, log_file):
     with open(f'logs/{log_file}', 'a') as logs:
         msg = f'[{time_now}] {msg}'
         logs.writelines(f'{msg}\n')
+        if 'Loss' in msg:
+            msg = f'\033[0;91m{msg}\033[00m'
+        elif 'Win' in msg:
+            msg = f'\033[0;92m{msg}\033[00m'
         print(msg)
 
 
@@ -84,7 +89,7 @@ def check_win(web_driver: webdriver, trade_amount: int, log_file: str) -> bool:
 
 
 def main(log_file, username: str, password: str, base_amount: int, martingale: float, martingale_stop: int,
-         win_sleep: float, stop_balance: float):
+         win_sleep: float, stop_balance: float, currency=None):
     try:
         os.mkdir('logs')
     except FileExistsError:
@@ -145,6 +150,12 @@ def main(log_file, username: str, password: str, base_amount: int, martingale: f
         logger(msg, log_file)
         driver.close()
         exit()
+
+    if currency:
+        driver.find_element(By.XPATH, '//*[@id="asset-0"]/button').click()
+        time.sleep(1)
+        driver.find_element(By.XPATH, f"//*[contains(text(), '{currency}')]").click()
+        time.sleep(2)
 
     msg = 'Started Trading'
     logger(msg, log_file)
@@ -217,22 +228,15 @@ if __name__ == '__main__':
     # Configuration
     user_name = str
     user_password = str
-    base_trade_amount = float
-    martingale_multiplier = float
-    # Reset the martingale counter and start from base amount again
-    max_martingale = int
-    # Bot will sleep for specified number of seconds after every win
-    win_wait = float
-    # Bot will Pause itself after account balance reaches or goes over the specified amount
-    exit_bal = float
- 
-    # user_name = input('Username: ')
-    # user_password = input('Password: ')
-    # base_trade_amount = float(input('Base Amount: '))
-    # martingale_multiplier = float(input('Martingale Multiplier: '))
-    # max_martingale = int(input('Martingale Stop: '))
-    # win_wait = float(input('Win Sleep: '))  # Will pause for n number of seconds after each win
-    # # Bot will Pause itself after account balance reaches or goes over the specified amount
-    # exit_bal = float(input('Stop Balance: '))
 
-    main(file, user_name, user_password, base_trade_amount, martingale_multiplier, max_martingale, win_wait, exit_bal)
+    base_trade_amount = int
+    martingale_multiplier = float
+    max_martingale = int
+
+    win_wait = int  # Sleep specified number of seconds after each win
+    exit_bal = int  # Exit when account balance reaches or goes over this amount
+
+    strict_currency = None  # Name a specific currency or None to trade on whatever asset is shown upon login
+
+    main(file, user_name, user_password, base_trade_amount, martingale_multiplier, max_martingale, win_wait, exit_bal,
+         strict_currency)
