@@ -26,6 +26,10 @@ def logger(msg, log_file):
     with open(f'logs/{log_file}', 'a') as logs:
         msg = f'[{time_now}] {msg}'
         logs.writelines(f'{msg}\n')
+        if 'Loss' in msg:
+            msg = f'\033[0;91m{msg}\033[00m'
+        elif 'Win' in msg:
+            msg = f'\033[0;92m{msg}\033[00m'
         print(msg)
 
 
@@ -158,13 +162,6 @@ def main(log_file, username: str, password: str, base_amount: int, martingale: f
 
     while True:
         try:
-            balance = driver.find_element(By.ID, 'qa_trading_balance').text.replace(',', '')
-            balance = float(re.findall(r'([-+]*\d+\.\d+|[-+]*\d+)', balance)[0])
-            if balance >= stop_balance:
-                msg = f'Balance Reached: {balance}'
-                logger(msg, log_file)
-                driver.close()
-                exit()
             try:
                 current_amount = amounts[amount_index]
             except IndexError:
@@ -207,6 +204,13 @@ def main(log_file, username: str, password: str, base_amount: int, martingale: f
             if is_win:
                 msg = f'Win - Balance: {balance}'
                 logger(msg, log_file)
+
+                if balance >= stop_balance:
+                    msg = f'Balance Reached: {balance}'
+                    logger(msg, log_file)
+                    driver.close()
+                    exit()
+
                 amount_index = 0
                 time.sleep(win_sleep)
             else:
