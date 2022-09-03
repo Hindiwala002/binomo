@@ -26,7 +26,7 @@ pip install selenium
 ```shell
 python3 trader.py
 ```
-**Follow the prompts and input the appropriate info.**
+**Scroll to the bottom of trader.py to configure the Bot.**
 
 ## How it works:
 **Makes Trade Based On Majority Market Opinion. If Market Opinion Is Neutral(50%), Make The Trade On Random Direction.**
